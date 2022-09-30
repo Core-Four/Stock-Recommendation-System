@@ -8,5 +8,3 @@ decisions by suggesting investment in a group of equity stocks
 when strong evidence of possible profit from these transactions is 
 available.
 
-
-[STOCK RECOMMENDATION SYSTEM.pdf](https://github.com/ChaitanyaParab11/Stock-Recommendation-System/files/9681597/STOCK.RECOMMENDATION.SYSTEM.pdf)
