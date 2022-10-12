@@ -1,15 +1,267 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © NewTrade101
 //@version=5
-indicator('Mini-Project', shorttitle='Mini', overlay=true)
-len = input(300, title='Length')
+//indicator('Mini-Project', shorttitle='Mini', overlay=true)
+strategy('Mini-Project', shorttitle='Mini' ,overlay=true, margin_long=100, margin_short=100)
+//---------------------------------------------------------Input----------------------------------------------------------
 
-a = ta.linreg(high, len, 0)
-b = ta.linreg(low, len, 0)
-c = -ta.dev(low, len) + b
-d = ta.dev(high, len) + a
+//Linear-Regression (LR) Input
+lr_bool= input.bool(false,title = "Linear-Regression", group = "----------SetUp----------")
+lr_len = input.int(300, title='Linear-Regression - Length',minval=0,maxval=1001,group = "----------Linear-Regression (LR) Setting----------")
+lr_plot = input.bool(false,title = "Plot Linear-Regression", group = "----------Linear-Regression (LR) Setting----------")
 
-plot(a,title="a")
-plot(b,title="b")
-plot(c, color=c > c[1] ? color.green : color.red,title="c")
-plot(d, color=d > d[1] ? color.green : color.red,title="d")
+//RSI Input
+//rsi_plot =input.bool(false,title = "Plot RSI", group = "SetUp")
+rsi_len = input.int(14,title = "RSI Length",minval = 1,maxval = 51,group = "----------RSI Setting----------")
+rsi_bool =input.bool(false,title = "RSI", group = "----------SetUp----------")
+rsi_low =input.int(30,minval=5,maxval=95,title = "RSI-Buy Line",group ="----------RSI Setting----------" )
+rsi_high =input.int(70,minval=5,maxval=95,title = "RSI-Sell Line",group ="----------RSI Setting----------" )
+
+//MACD
+macd_bool = input.bool(false,title = "MACD",group = "----------SetUp----------")
+macd_fastlen=input.int(12,title = "MACD Fast Length",minval = 1,maxval = 201,group = "----------MACD Setting----------")
+macd_slowlen=input.int(26,title = "MACD Slow Length",minval = 1,maxval = 201,group = "----------MACD Setting----------")
+
+
+
+
+
+//---------------------------------------------------------Input----------------------------------------------------------
+
+
+
+//---------------------------------------------------------MACD----------------------------------------------------------
+
+
+[macdline,signalline,macdhist] = ta.macd(close,macd_fastlen,macd_slowlen,9)
+
+macd_buy=ta.crossover(macdline,signalline)
+macd_sell = ta.crossunder(macdline,signalline)
+
+//plot(macdline)
+//plot(signalline)
+
+
+//---------------------------------------------------------MACD----------------------------------------------------------
+
+//---------------------------------------------------------RSI----------------------------------------------------------
+
+my_rsi= ta.rsi(close,rsi_len)
+rsi_buy= ta.crossover(my_rsi,rsi_low)
+rsi_sell= ta.crossunder(my_rsi,rsi_high)
+
+//---------------------------------------------------------RSI----------------------------------------------------------
+
+
+//---------------------------------------------------------Linear-Regression----------------------------------------------------------
+
+a = ta.linreg(high, lr_len, 0)
+b = ta.linreg(low, lr_len, 0)
+c = -ta.dev(low, lr_len) + b
+d = ta.dev(high, lr_len) + a
+
+plot(lr_plot == true ? a:na,title="Linear-Regression -UperBand")
+plot(lr_plot==true ? b :na,title="Linear-Regression -LowerBand")
+plot(lr_plot==true ? c :na, color=c > c[1] ? color.green : color.red,title="Linear-Regression -Middle UperBand")
+plot(lr_plot==true ? d :na, color=d > d[1] ? color.green : color.red,title="Linear-Regression -Middle LowerBand")
+
+lr_buy = ta.crossover(close,c)
+lr_sell = ta.crossunder(close,d)
+//---------------------------------------------------------Linear-Regression----------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------Plot-Trade-----------------------------------------------------------------
+
+
+//---------------------------------------------------------Deth-Cross-----------------------------------------------------------------
+dc_ema1 = ta.ema(close,50)
+dc_ema2 = ta.ema(close,200)
+
+buy = ta.crossover(dc_ema1,dc_ema2)
+sell =ta.crossunder(dc_ema1,dc_ema2)
+
+
+//---------------------------------------------------------Deth-Cross-----------------------------------------------------------------
+
+// # ========================================================================= #
+// #                   |   StopLoss  |
+// # ========================================================================= #
+if(lr_bool)
+    rsi_bool := false
+    macd_bool:=false
+    buy := lr_buy
+    sell := lr_sell
+if(rsi_bool)
+    lr_bool:=false
+    macd_bool:=false
+    buy := rsi_buy
+    sell := rsi_sell
+
+if(macd_bool)
+    lr_bool:=false
+    rsi_bool:=false
+    buy := macd_buy
+    sell := macd_sell
+
+//  ----- Inputs: stoploss %, takeProfit %
+stopLossPercentage = input.float(defval=1, title='StopLoss %', minval=0.01, step=1,maxval=20,group="StopLoss") / 1000
+takeProfit = input.float(defval=3, title='Take Profit %', minval=0.01, step=1,maxval=20,group="StopLoss") / 1000
+//  ----- Exit and Entry Conditions
+isLong = buy
+LongExit = buy or sell
+
+//  ----- Calculate Stoploss and Take Profit values
+SL = strategy.position_avg_price * (1 - stopLossPercentage)
+TP = strategy.position_avg_price * (1 + takeProfit)
+cpb = strategy.position_avg_price
+//  ----- Strategy Enter, and exit when conditions are met
+strategy.entry("Enter Long", strategy.long, when=isLong)
+if strategy.position_size > 0 
+    strategy.close("Exit Long", LongExit)
+    strategy.exit(id="Exit Long", stop=SL, limit=TP)
+
+
+
+//  ----- Plot Stoploss and TakeProfit lines
+BSL=plot(strategy.position_size > 0 ? SL : na, style=plot.style_linebr, color=color.red, linewidth=2, title="StopLoss")
+BTP=plot(strategy.position_size > 0 ? TP : na, style=plot.style_linebr, color=color.green, linewidth=2, title="TakeProfit")
+BCP=plot(strategy.position_size > 0 ? cpb : na, style=plot.style_linebr, color=color.white, linewidth=2, title="Curent Prise Buy")
+fill(BCP, BSL, color.new(color.red, 90))
+fill(BCP, BTP, color.new(color.green, 90))
+//---------------------------------------------------------------------------------------------------------------------
+
+
+//  ----- Exit and Entry Conditions
+isSell = sell
+SellExit = buy or sell
+
+//  ----- Calculate Stoploss and Take Profit values
+SL1 = strategy.position_avg_price / (1 - stopLossPercentage)
+TP1 = strategy.position_avg_price / (1 + takeProfit)
+cp = strategy.position_avg_price
+//  ----- Strategy Enter, and exit when conditions are met
+strategy.entry("Enter Short", strategy.short, when=isSell)
+if strategy.position_size < 0 
+    strategy.close("Exit Short", SellExit)
+    strategy.exit(id="Exit Short", stop=SL1, limit=TP1)
+
+//  ----- Plot Stoploss and TakeProfit lines
+SS=plot(strategy.position_size < 0 ? SL1 : na, style=plot.style_linebr, color=color.red, linewidth=2, title="StopLoss Sell")
+
+STP=plot(strategy.position_size < 0 ? TP1 : na, style=plot.style_linebr, color=color.green, linewidth=2, title="TakeProfit Sell")
+CS=plot(strategy.position_size < 0 ? cp : na, style=plot.style_linebr, color=color.white, linewidth=2, title="Curent Prise Sell")
+fill(SS, CS, color.new(color.red, 90))
+fill(CS, STP, color.new(color.green, 90))
+
+// # ========================================================================= #
+// #                   |   StopLoss  |
+// # ========================================================================= #
+
+//--------------------------------------------------------Plot-Trade-----------------------------------------------------
+
+
+
+
+
+
+// # ========================================================================= #
+// #                   |   BackTester  |
+// # ========================================================================= #
+
+
+startBalance        = input.float(title="Starting Balance", defval=10000.0, group="g_tester", tooltip="Your starting balance for the custom inbuilt tester system")
+riskPerTrade        = input.float(title="Risk Per Trade", defval=1.0, group="g_tester", tooltip="Your desired % risk per trade (as a whole number)")
+drawTester          = input.bool(title="Draw Backtester", defval=true, group="g_tester", tooltip="Turn on/off inbuilt backtester display")
+rr = input.float(title='R:R', defval=1.0, group="g_tester", tooltip='Risk:Reward profile')
+
+
+// Save trade stop & target & position size if a valid setup is detected
+var t_entry = 0.0
+var t_stop = 0.0
+var t_target = 0.0
+var t_direction = 0
+
+// Get indicator values
+atr = ta.atr(14)
+
+// Custom function to convert pips into whole numbers
+toWhole(number) =>
+    return_1 = atr < 1.0 ? number / syminfo.mintick / (10 / syminfo.pointvalue) : number
+    return_1 := atr >= 1.0 and atr < 100.0 and syminfo.currency == 'JPY' ? return_1 * 100 : return_1
+    return_1
+
+// Custom function to convert whole numbers back into pips
+toPips(number) =>
+    return_2 = atr >= 1.0 ? number : number * syminfo.mintick * (10 / syminfo.pointvalue)
+    return_2 := atr >= 1.0 and atr < 100.0 and syminfo.currency == 'JPY' ? return_2 / 100 : return_2
+    return_2
+
+
+// Custom function to truncate (cut) excess decimal places
+truncate(_number, _decimalPlaces) =>
+    _factor = math.pow(10, _decimalPlaces)
+    int(_number * _factor) / _factor
+
+
+// --- BEGIN TESTER CODE --- //
+// Declare performance tracking variables
+var balance = startBalance
+var drawdown = 0.0
+var maxDrawdown = 0.0
+var maxBalance = 0.0
+var totalPips = 0.0
+var totalWins = 0
+var totalLoss = 0
+
+// Detect winning trades
+if strategy.wintrades != strategy.wintrades[1]
+    balance += riskPerTrade / 100 * balance * rr
+    totalPips += math.abs(t_entry - t_target)
+    totalWins += 1
+    if balance > maxBalance
+        maxBalance := balance
+        maxBalance
+
+// Detect losing trades
+if strategy.losstrades != strategy.losstrades[1]
+    balance -= riskPerTrade / 100 * balance
+    totalPips -= math.abs(t_entry - t_stop)
+    totalLoss += 1
+    // Update drawdown
+    drawdown := balance / maxBalance - 1
+    if drawdown < maxDrawdown
+        maxDrawdown := drawdown
+        maxDrawdown
+
+// Prepare stats table
+var table testTable = table.new(position.top_right, 5, 2, border_width=1)
+f_fillCell(_table, _column, _row, _title, _value, _bgcolor, _txtcolor) =>
+    _cellText = _title + '\n' + _value
+    table.cell(_table, _column, _row, _cellText, bgcolor=_bgcolor, text_color=_txtcolor)
+
+// Draw stats table
+var bgcolor = color.new(color.black, 0)
+if drawTester
+    if barstate.islastconfirmedhistory
+        // Update table
+        dollarReturn = balance - startBalance
+        f_fillCell(testTable, 0, 0, 'Total Trades:', str.tostring(strategy.closedtrades), bgcolor, color.white)
+        f_fillCell(testTable, 0, 1, 'Win Rate:', str.tostring(truncate(strategy.wintrades / strategy.closedtrades * 100, 2)) + '%', bgcolor, color.white)
+        f_fillCell(testTable, 1, 0, 'Starting:', '$' + str.tostring(startBalance), bgcolor, color.white)
+        f_fillCell(testTable, 1, 1, 'Ending:', '$' + str.tostring(truncate(balance, 2)), bgcolor, color.white)
+        f_fillCell(testTable, 2, 0, 'Return:', '$' + str.tostring(truncate(dollarReturn, 2)), dollarReturn > 0 ? color.green : color.red, color.white)
+        f_fillCell(testTable, 2, 1, 'Pips:', (totalPips > 0 ? '+' : '') + str.tostring(truncate(toWhole(totalPips), 2)), bgcolor, color.white)
+        f_fillCell(testTable, 3, 0, 'Return:', (dollarReturn > 0 ? '+' : '') + str.tostring(truncate(dollarReturn / startBalance * 100, 2)) + '%', dollarReturn > 0 ? color.green : color.red, color.white)
+        f_fillCell(testTable, 3, 1, 'Max DD:', str.tostring(truncate(maxDrawdown * 100, 2)) + '%', color.red, color.white)
+// --- END TESTER CODE --- //
+
+
+// # ========================================================================= #
+// #                   |   BackTester  |
+// # ========================================================================= #
+
+
