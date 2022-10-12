@@ -1,0 +1,15 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © NewTrade101
+//@version=5
+indicator('Mini-Project', shorttitle='Mini', overlay=true)
+len = input(300, title='Length')
+
+a = ta.linreg(high, len, 0)
+b = ta.linreg(low, len, 0)
+c = -ta.dev(low, len) + b
+d = ta.dev(high, len) + a
+
+plot(a,title="a")
+plot(b,title="b")
+plot(c, color=c > c[1] ? color.green : color.red,title="c")
+plot(d, color=d > d[1] ? color.green : color.red,title="d")
