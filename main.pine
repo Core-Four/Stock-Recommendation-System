@@ -5,28 +5,67 @@
 strategy('Mini-Project', shorttitle='Mini' ,overlay=true, margin_long=100, margin_short=100)
 //---------------------------------------------------------Input----------------------------------------------------------
 
+
 //Linear-Regression (LR) Input
-lr_bool= input.bool(false,title = "Linear-Regression", group = "----------SetUp----------")
-lr_len = input.int(300, title='Linear-Regression - Length',minval=0,maxval=1001,group = "----------Linear-Regression (LR) Setting----------")
-lr_plot = input.bool(false,title = "Plot Linear-Regression", group = "----------Linear-Regression (LR) Setting----------")
+lr_bool= input.bool(false,title = "Linear-Regression", group = "----------SetUp----------",tooltip = "This Uses Linear Regresion")
+lr_len = input.int(300, title='Linear-Regression - Length',minval=0,maxval=1001,group = "----------Linear-Regression (LR) Setting----------",tooltip = "This Uses Linear Regresion")
+lr_plot = input.bool(false,title = "Plot Linear-Regression", group = "----------Linear-Regression (LR) Setting----------",tooltip = "This Uses Linear Regresion")
 
 //RSI Input
 //rsi_plot =input.bool(false,title = "Plot RSI", group = "SetUp")
-rsi_len = input.int(14,title = "RSI Length",minval = 1,maxval = 51,group = "----------RSI Setting----------")
-rsi_bool =input.bool(false,title = "RSI", group = "----------SetUp----------")
-rsi_low =input.int(30,minval=5,maxval=95,title = "RSI-Buy Line",group ="----------RSI Setting----------" )
-rsi_high =input.int(70,minval=5,maxval=95,title = "RSI-Sell Line",group ="----------RSI Setting----------" )
+rsi_len = input.int(14,title = "RSI Length",minval = 1,maxval = 51,group = "----------RSI Setting----------",tooltip = "RSI Ralitive Strength Index")
+rsi_bool =input.bool(false,title = "RSI", group = "----------SetUp----------",tooltip = "RSI Ralitive Strength Index")
+rsi_low =input.int(30,minval=5,maxval=95,title = "RSI-Buy Line",group ="----------RSI Setting----------" ,tooltip = "RSI Ralitive Strength Index")
+rsi_high =input.int(70,minval=5,maxval=95,title = "RSI-Sell Line",group ="----------RSI Setting----------" ,tooltip = "RSI Ralitive Strength Index")
 
 //MACD
-macd_bool = input.bool(false,title = "MACD",group = "----------SetUp----------")
-macd_fastlen=input.int(12,title = "MACD Fast Length",minval = 1,maxval = 201,group = "----------MACD Setting----------")
-macd_slowlen=input.int(26,title = "MACD Slow Length",minval = 1,maxval = 201,group = "----------MACD Setting----------")
+macd_bool = input.bool(false,title = "MACD",group = "----------SetUp----------",tooltip = "MACD ")
+macd_fastlen=input.int(12,title = "MACD Fast Length",minval = 1,maxval = 201,group = "----------MACD Setting----------",tooltip = "MACD ")
+macd_slowlen=input.int(26,title = "MACD Slow Length",minval = 1,maxval = 201,group = "----------MACD Setting----------",tooltip = "MACD ")
 
+//SAR
+sar_start=input.float(0.01,title = "Start",group = "----------SAR Setting----------",tooltip = "SAR is used here")
+sar_incriment=input.float(0.0034,title = "Incriment",group = "----------SAR Setting----------",tooltip = "SAR is used here")
+sar_bool =input.bool(false,title = "SAR", group = "----------SetUp----------",tooltip = "SAR is used here")
+sar_plot = input.bool(false,title = "Plot SAR ", group = "----------SAR Setting----------",tooltip = "SAR is used here")
 
-
-
+//Super -Trend
+sp_atr= input.int(2,title = "Super-Trend ATR",group = "----------Super-Trend Setting----------",tooltip = "Super-Trend is used here")
+sp_fact = input.float(5,title = "Super-Trend Factor",group = "----------Super-Trend Setting----------",tooltip = "Super-Trend is used here")
+sp_bool = input.bool(false,title = "Super-Trend",group = "----------SetUp----------",tooltip = "Super-Trend is used here")
+sp_plot= input.bool(false,title = "Plot Suprt-Trend",group = "----------Super-Trend Setting----------",tooltip = "Super-Trend is used here")
 
 //---------------------------------------------------------Input----------------------------------------------------------
+
+
+
+//---------------------------------------------------------Super-Trend----------------------------------------------------------
+
+[supertrend,direction] = ta.supertrend(sp_fact,sp_atr)
+
+
+plot(sp_bool == true and sp_plot==true ? supertrend : na)
+
+
+sp_buy= ta.crossover(close,supertrend)
+sp_sell= ta.crossunder(close,supertrend)
+
+
+//---------------------------------------------------------Super-Trend----------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------SAR----------------------------------------------------------
+
+my_sar = ta.sar(sar_start,sar_incriment,0.2)
+plot(sar_bool==true and sar_plot == true? my_sar : na)
+
+
+sar_buy = ta.crossover(close,my_sar)
+sar_sell = ta.crossunder(close,my_sar)
+
+//---------------------------------------------------------SAR----------------------------------------------------------
 
 
 
@@ -93,19 +132,42 @@ sell =ta.crossunder(dc_ema1,dc_ema2)
 if(lr_bool)
     rsi_bool := false
     macd_bool:=false
+    sar_bool:=false
+    sp_bool:=false
     buy := lr_buy
     sell := lr_sell
+
 if(rsi_bool)
     lr_bool:=false
     macd_bool:=false
+    sar_bool:=false
+    sp_bool:=false
     buy := rsi_buy
     sell := rsi_sell
 
 if(macd_bool)
     lr_bool:=false
     rsi_bool:=false
+    sar_bool:=false
+    sp_bool:=false
     buy := macd_buy
     sell := macd_sell
+
+if(sar_bool)
+    lr_bool:=false
+    rsi_bool:=false
+    macd_bool:=false
+    sp_bool:=false
+    buy := sar_buy
+    sell := sar_sell
+
+if(sp_bool)
+    lr_bool:=false
+    rsi_bool:=false
+    macd_bool:=false
+    sar_bool:=false
+    buy := sp_buy
+    sell := sp_sell
 
 //  ----- Inputs: stoploss %, takeProfit %
 stopLossPercentage = input.float(defval=1, title='StopLoss %', minval=0.01, step=1,maxval=20,group="StopLoss") / 1000
